@@ -28,13 +28,13 @@ _OMNIGLOT_DATA_DIR = _PATH + '/omniglot_data'
 
 _MINIIMAGENET_DATA_DIR = _PATH + '/miniImagenet'
 #total training epochs
-_TRAIN_EPOCHS = 100
+_TRAIN_EPOCHS = 150
 #the number of training epochs between validation
-_EPOCHS_PER_EVAL = 1
+_EPOCHS_PER_EVAL = 10
 #batch size
-_BATCH_SIZE = 64
+_BATCH_SIZE = 32
     
-_DEFAULT_IMAGE_SIZE = 84 # or 224
+_DEFAULT_IMAGE_SIZE = 224
 
 _NUM_CHANNELS = 3
 
@@ -46,7 +46,7 @@ _WEIGHT_DECAY = 1e-4
                  100 for few-shot training approch on training(64) and validation(16) and test(20) data
    omniglot:     1623 for few-shot training approch on training(1200) and test(423) data
 """
-_TOTAL_NUMBER_CLASSES = 64 
+_TOTAL_NUMBER_CLASSES = 5
 
 """
     first_step: directly train the classifier on training data
@@ -59,8 +59,8 @@ _VAL_FILENAME = 'eval.tfrecords'
 
 
 _NUM_IMAGES = {
-    'train': 33005,
-    'validation': 5120
+    'train': 3000,
+    'validation': 3000
 }
  
 def load_omniglot_data(data_dir, is_training):
@@ -178,13 +178,13 @@ def resnet_model_fn(features, labels, mode, params):
         """
         scale the learning rate during train phase depends on the epochs
         """
-        initial_learning_rate = 0.1
+        initial_learning_rate = 0.01
         batches_per_epoch = _NUM_IMAGES['train'] / _BATCH_SIZE
         global_step = tf.train.get_or_create_global_step()
 
         #multiply the learning rate by 0.1 at epoch 30, 60, 80, 90
-        boundaries = [int(batches_per_epoch * epoch) for epoch in [30, 60, 80, 90]]
-        values = [initial_learning_rate*decay for decay in [1, 0.1, 0.01, 1e-3, 1e-4]]
+        boundaries = [int(batches_per_epoch * epoch) for epoch in [20,50,90,110,130,140]]
+        values = [initial_learning_rate*decay for decay in [1, 0.1, 0.01, 1e-3, 1e-4,1e-5,1e-6]]
         learning_rate = tf.train.piecewise_constant(
             tf.cast(global_step, tf.int32), boundaries, values)
 
@@ -192,10 +192,10 @@ def resnet_model_fn(features, labels, mode, params):
         tf.identity(learning_rate, name = 'learning_rate')
         tf.summary.scalar('learning_rate', learning_rate)
 
-        optimizer = tf.train.MomentumOptimizer(
-            learning_rate = learning_rate,
-            momentum = _MOMENTUM)
-
+        #optimizer = tf.train.AdamOptimizer(
+        #    learning_rate = learning_rate)
+        optimizer = tf.train.MomentumOptimizer(learning_rate=learning_rate,
+                                               momentum=_MOMENTUM)
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
             train_op = optimizer.minimize(loss, global_step)
@@ -230,7 +230,7 @@ def main(unused_argv):
     #set up the runconfig to only save checkpoints once per training cycle
     run_config = tf.estimator.RunConfig().replace(save_checkpoints_steps = 1000) 
     resnet_classifier = tf.estimator.Estimator(
-        model_fn = resnet_model_fn, model_dir = '/tmp/exp_2', config = run_config,
+        model_fn = resnet_model_fn, model_dir = '/tmp/exp_4', config = run_config,
         params = {
             'resnet_size': FLAGS.resnet_size,
             'data_format': FLAGS.data_format
@@ -244,7 +244,7 @@ def main(unused_argv):
         }
 
         logging_hook = tf.train.LoggingTensorHook(
-            tensors = tensor_to_log, every_n_iter = 100)
+            tensors = tensor_to_log, every_n_iter = 5)
 
         print(colored('Starting a training cycle', 'green'))
         resnet_classifier.train(

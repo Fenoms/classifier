@@ -67,11 +67,12 @@ def process_data(res):
     for k, label in enumerate(res):
         c = 0
         imgs_folder = data_path + label
-        imgs = glob.glob(imgs_folder + '/*.png')
+        imgs = glob.glob(imgs_folder + '/*.JPEG')
+ 
         for img in imgs:
             if c < 600:
                 try:
-                    img_array = _read_image_as_array(f)
+                    img_array = _read_image_as_array(img)
                     img_array = np.reshape(img_array, (1,_IMAGE_SIZE, _IMAGE_SIZE, 3))
                     tra_data[c + k*600] = img_array
                     tra_labels[c + k*600] = k
@@ -80,14 +81,13 @@ def process_data(res):
                     print("skipping image, because " + str(e))
             elif c < 1200:
                 try:
-                    img_array = _read_image_as_array(f)
+                    img_array = _read_image_as_array(img)
                     img_array = np.reshape(img_array, (1,_IMAGE_SIZE, _IMAGE_SIZE, 3))
                     val_data[c - 600 + k*600] = img_array
                     val_labels[c - 600 + k*600] = k
                     c += 1
                 except Exception as e:
                     print("skipping image, because " + str(e))
-
             else:
                 print(c)
                 break
@@ -168,6 +168,7 @@ def generate_tfrecords():
 
 if __name__ == '__main__':
     res = find_five_candidates()
+    print(res)
     print("extract files")
     extract_file(res)
     print("generating pickle files")
